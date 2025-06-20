@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Temp Mail Platform</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="container">
+    <aside id="sidebar">
+      <button id="generate">Generate New Email</button>
+      <button id="import">Import Addresses</button>
+      <button id="export">Export Addresses</button>
+      <input type="file" id="importFile" style="display:none" />
+      <h3>Accounts</h3>
+      <ul id="accountList"></ul>
+    </aside>
+    <main id="main">
+      <h2 id="currentAccount"></h2>
+      <div id="credentials"></div>
+      <button id="listEmails" disabled>View Emails</button>
+      <section id="mailList"></section>
+      <section id="mailDetail"></section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
