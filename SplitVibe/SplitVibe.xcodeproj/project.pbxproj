@@ -39,7 +39,7 @@
 			sourceTree = "<group>";
 		};
 		AA000000000000000000002 /* SplitVibe */ = {
-			isa = PBXGroup;
+			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SplitVibe;
 			sourceTree = "<group>";
 		};
