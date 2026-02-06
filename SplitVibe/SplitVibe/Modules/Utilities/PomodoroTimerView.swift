@@ -10,93 +10,145 @@ struct PomodoroTimerView: View {
     private let workDuration = 25 * 60
     private let breakDuration = 5 * 60
 
+    private var workGradient: [Color] { [.indigo, .purple] }
+    private var breakGradient: [Color] { [.green, .mint] }
+    private var activeGradient: [Color] { isBreak ? breakGradient : workGradient }
+
     var body: some View {
         VStack(spacing: 16) {
-            // Status
+            // MARK: - Glass Header Bar
             HStack {
                 Image(systemName: isBreak ? "cup.and.saucer.fill" : "brain.head.profile")
-                    .foregroundStyle(isBreak ? .green : .indigo)
-                    .font(.caption)
+                    .foregroundStyle(
+                        LinearGradient(colors: activeGradient, startPoint: .leading, endPoint: .trailing)
+                    )
+                    .font(.subheadline.weight(.semibold))
+                    .contentTransition(.symbolEffect(.replace))
+
                 Text(isBreak ? "Break Time" : "Focus Time")
                     .font(.subheadline.bold())
+                    .contentTransition(.numericText())
+
                 Spacer()
-                HStack(spacing: 4) {
+
+                // Session dots as capsules
+                HStack(spacing: 5) {
                     ForEach(0..<4, id: \.self) { i in
-                        Circle()
-                            .fill(i < sessionsCompleted ? Color.indigo : Color.gray.opacity(0.3))
-                            .frame(width: 8, height: 8)
+                        Capsule()
+                            .fill(
+                                i < sessionsCompleted
+                                    ? LinearGradient(colors: workGradient, startPoint: .leading, endPoint: .trailing)
+                                    : LinearGradient(colors: [Color.gray.opacity(0.25), Color.gray.opacity(0.15)], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .frame(width: 18, height: 7)
+                            .animation(.spring(duration: 0.4), value: sessionsCompleted)
                     }
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 12)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
 
             Spacer()
 
-            // Timer display
+            // MARK: - Timer Circle
             ZStack {
-                Circle()
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 8)
-
+                // Glow shadow behind progress ring
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
-                        isBreak ? Color.green : Color.indigo,
-                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        LinearGradient(colors: activeGradient, startPoint: .topLeading, endPoint: .bottomTrailing),
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .blur(radius: 12)
+                    .opacity(0.5)
+
+                // Background track
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 12)
+
+                // Progress ring
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        LinearGradient(colors: activeGradient, startPoint: .topLeading, endPoint: .bottomTrailing),
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1), value: progress)
 
-                VStack(spacing: 4) {
+                // Time display
+                VStack(spacing: 6) {
                     Text(timeString)
-                        .font(.system(size: 36, weight: .bold, design: .monospaced))
+                        .font(.system(size: 42, weight: .bold, design: .monospaced))
                         .foregroundStyle(.primary)
+                        .contentTransition(.numericText(countsDown: true))
+                        .animation(.linear(duration: 0.1), value: timeRemaining)
 
                     Text(isBreak ? "Relax" : "Stay focused")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
                 }
             }
             .padding(.horizontal, 40)
 
             Spacer()
 
-            // Controls
-            HStack(spacing: 24) {
+            // MARK: - Control Buttons
+            HStack(spacing: 28) {
+                // Reset - glass circle
                 Button {
+                    Haptics.tap()
                     reset()
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
-                        .font(.title3)
+                        .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
-                        .frame(width: 48, height: 48)
-                        .background(Color(.secondarySystemBackground), in: Circle())
+                        .frame(width: 50, height: 50)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
                 }
 
+                // Play/Pause - large gradient circle with shadow
                 Button {
+                    Haptics.tap()
                     toggleTimer()
                 } label: {
                     Image(systemName: isRunning ? "pause.fill" : "play.fill")
-                        .font(.title2)
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(isBreak ? .green : .indigo, in: Circle())
+                        .frame(width: 64, height: 64)
+                        .background(
+                            LinearGradient(colors: activeGradient, startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: Circle()
+                        )
+                        .shadow(color: activeGradient.first?.opacity(0.5) ?? .clear, radius: 12, y: 4)
+                        .contentTransition(.symbolEffect(.replace))
                 }
 
+                // Skip - glass circle
                 Button {
+                    Haptics.tap()
                     skip()
                 } label: {
                     Image(systemName: "forward.fill")
-                        .font(.title3)
+                        .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
-                        .frame(width: 48, height: 48)
-                        .background(Color(.secondarySystemBackground), in: Circle())
+                        .frame(width: 50, height: 50)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
                 }
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 20)
         }
         .background(Color(.systemBackground))
     }
+
+    // MARK: - Computed Properties
 
     private var progress: CGFloat {
         let total = CGFloat(isBreak ? breakDuration : workDuration)
@@ -108,6 +160,8 @@ struct PomodoroTimerView: View {
         let seconds = timeRemaining % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
+
+    // MARK: - Timer Logic
 
     private func toggleTimer() {
         if isRunning {
@@ -129,6 +183,7 @@ struct PomodoroTimerView: View {
         timer?.invalidate()
         timer = nil
         isRunning = false
+        Haptics.success()
 
         if !isBreak {
             sessionsCompleted += 1

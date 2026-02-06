@@ -2,68 +2,118 @@ import SwiftUI
 
 struct TriviaView: View {
     @State private var viewModel = TriviaViewModel()
+    @State private var selectedScale: String?
+
+    private let letterPrefixes = ["A", "B", "C", "D"]
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // MARK: - Glass Header
             HStack {
                 Image(systemName: "questionmark.circle.fill")
                     .foregroundStyle(.cyan)
-                    .font(.caption)
+                    .font(.subheadline.weight(.semibold))
+
                 Text("Trivia")
                     .font(.subheadline.bold())
+
                 Spacer()
-                Text("Score: \(viewModel.correctCount)/\(viewModel.totalAnswered)")
-                    .font(.caption.bold().monospacedDigit())
-                    .foregroundStyle(.cyan)
+
+                // Score as gradient pill
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.caption2)
+                    Text("\(viewModel.correctCount)/\(viewModel.totalAnswered)")
+                        .font(.caption.bold().monospacedDigit())
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(
+                    LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing),
+                    in: Capsule()
+                )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .background(.ultraThinMaterial)
 
             if let question = viewModel.currentQuestion {
                 ScrollView {
-                    VStack(spacing: 16) {
-                        // Category
-                        Text(question.category)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 12)
+                    VStack(spacing: 18) {
+                        // MARK: - Question Number + Category Row
+                        HStack(spacing: 8) {
+                            // Question number indicator
+                            Text("Q\(viewModel.totalAnswered + (viewModel.hasAnswered ? 0 : 1))")
+                                .font(.caption2.bold().monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(.ultraThinMaterial, in: Capsule())
 
-                        // Question
+                            // Category tag/chip
+                            Text(question.category)
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 3)
+                                .background(categoryColor(for: question.category).gradient, in: Capsule())
+                        }
+                        .padding(.top, 16)
+
+                        // MARK: - Question Text
                         Text(question.text)
-                            .font(.subheadline.bold())
+                            .font(.title3.bold())
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 4)
 
-                        // Answers
-                        VStack(spacing: 8) {
-                            ForEach(question.shuffledAnswers, id: \.self) { answer in
-                                answerButton(answer, question: question)
+                        // MARK: - Answer Buttons
+                        VStack(spacing: 10) {
+                            ForEach(Array(question.shuffledAnswers.enumerated()), id: \.element) { index, answer in
+                                answerButton(
+                                    answer,
+                                    question: question,
+                                    letterPrefix: index < letterPrefixes.count ? letterPrefixes[index] : "?"
+                                )
                             }
                         }
                         .padding(.horizontal, 16)
 
-                        // Next button (after answering)
+                        // MARK: - Next Question Button
                         if viewModel.hasAnswered {
                             Button {
-                                viewModel.nextQuestion()
+                                Haptics.tap()
+                                withAnimation(.spring(duration: 0.35)) {
+                                    viewModel.nextQuestion()
+                                    selectedScale = nil
+                                }
                             } label: {
-                                Text("Next Question")
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 10)
-                                    .background(.cyan, in: Capsule())
+                                HStack(spacing: 6) {
+                                    Text("Next Question")
+                                        .font(.subheadline.bold())
+                                    Image(systemName: "arrow.right")
+                                        .font(.caption.bold())
+                                }
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 28)
+                                .padding(.vertical, 12)
+                                .background(
+                                    LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing),
+                                    in: Capsule()
+                                )
+                                .shadow(color: .cyan.opacity(0.3), radius: 10, y: 4)
                             }
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                             .padding(.top, 8)
                         }
                     }
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 20)
                 }
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: 14) {
                     ProgressView()
+                        .scaleEffect(1.2)
                     Text("Loading questions...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -74,56 +124,126 @@ struct TriviaView: View {
         .background(Color(.systemBackground))
     }
 
-    private func answerButton(_ answer: String, question: TriviaQuestion) -> some View {
+    // MARK: - Answer Button
+
+    private func answerButton(_ answer: String, question: TriviaQuestion, letterPrefix: String) -> some View {
         let isSelected = viewModel.selectedAnswer == answer
         let isCorrect = answer == question.correctAnswer
         let showResult = viewModel.hasAnswered
 
         return Button {
             guard !viewModel.hasAnswered else { return }
-            viewModel.answer(answer)
+            selectedScale = answer
+            withAnimation(.spring(duration: 0.35)) {
+                viewModel.answer(answer)
+            }
+            if answer == question.correctAnswer {
+                Haptics.success()
+            } else {
+                Haptics.error()
+            }
         } label: {
-            HStack {
+            HStack(spacing: 12) {
+                // Letter prefix circle
+                Text(letterPrefix)
+                    .font(.caption.bold())
+                    .foregroundStyle(prefixForeground(isSelected: isSelected, isCorrect: isCorrect, showResult: showResult))
+                    .frame(width: 28, height: 28)
+                    .background(
+                        prefixBackground(isSelected: isSelected, isCorrect: isCorrect, showResult: showResult),
+                        in: Circle()
+                    )
+
                 Text(answer)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.leading)
+
                 Spacer()
+
                 if showResult {
                     Image(systemName: isCorrect ? "checkmark.circle.fill" : (isSelected ? "xmark.circle.fill" : ""))
                         .foregroundStyle(isCorrect ? .green : .red)
-                        .font(.caption)
+                        .font(.subheadline)
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(12)
+            .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(backgroundColor(isSelected: isSelected, isCorrect: isCorrect, showResult: showResult))
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(backgroundColor(isSelected: isSelected, isCorrect: isCorrect, showResult: showResult))
+                    )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 14)
                     .stroke(borderColor(isSelected: isSelected, isCorrect: isCorrect, showResult: showResult), lineWidth: 1.5)
+            )
+            // Glow effect for correct/wrong
+            .shadow(
+                color: glowColor(isSelected: isSelected, isCorrect: isCorrect, showResult: showResult),
+                radius: showResult && (isCorrect || isSelected) ? 8 : 0
             )
         }
         .buttonStyle(.plain)
+        .scaleEffect(selectedScale == answer ? 0.97 : 1.0)
+        .animation(.spring(duration: 0.25), value: selectedScale)
+    }
+
+    // MARK: - Styling Helpers
+
+    private func prefixForeground(isSelected: Bool, isCorrect: Bool, showResult: Bool) -> Color {
+        guard showResult else { return .secondary }
+        if isCorrect { return .white }
+        if isSelected { return .white }
+        return .secondary
+    }
+
+    private func prefixBackground(isSelected: Bool, isCorrect: Bool, showResult: Bool) -> Color {
+        guard showResult else { return Color.white.opacity(0.08) }
+        if isCorrect { return .green }
+        if isSelected { return .red }
+        return Color.white.opacity(0.08)
     }
 
     private func backgroundColor(isSelected: Bool, isCorrect: Bool, showResult: Bool) -> Color {
-        guard showResult else {
-            return Color(.secondarySystemBackground)
-        }
-        if isCorrect { return .green.opacity(0.15) }
-        if isSelected { return .red.opacity(0.15) }
-        return Color(.secondarySystemBackground)
+        guard showResult else { return .clear }
+        if isCorrect { return .green.opacity(0.1) }
+        if isSelected { return .red.opacity(0.1) }
+        return .clear
     }
 
     private func borderColor(isSelected: Bool, isCorrect: Bool, showResult: Bool) -> Color {
         guard showResult else {
-            return isSelected ? .cyan : .clear
+            return isSelected ? .cyan.opacity(0.6) : Color.white.opacity(0.06)
         }
-        if isCorrect { return .green }
-        if isSelected { return .red }
+        if isCorrect { return .green.opacity(0.6) }
+        if isSelected { return .red.opacity(0.6) }
+        return Color.white.opacity(0.06)
+    }
+
+    private func glowColor(isSelected: Bool, isCorrect: Bool, showResult: Bool) -> Color {
+        guard showResult else { return .clear }
+        if isCorrect { return .green.opacity(0.3) }
+        if isSelected { return .red.opacity(0.3) }
         return .clear
+    }
+
+    private func categoryColor(for category: String) -> Color {
+        switch category.lowercased() {
+        case "science": return .blue
+        case "history": return .brown
+        case "geography": return .green
+        case "music": return .pink
+        case "technology": return .indigo
+        case "nature": return .mint
+        case "sports": return .orange
+        case "movies": return .purple
+        case "food": return .red
+        default: return .gray
+        }
     }
 }
 
