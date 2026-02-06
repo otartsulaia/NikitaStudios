@@ -5,6 +5,10 @@ import SwiftData
 struct SplitVibeApp: App {
     @State private var router = AppRouter()
 
+    init() {
+        AudioSessionManager.shared.configureForMixedPlayback()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

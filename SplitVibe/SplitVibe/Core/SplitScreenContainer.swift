@@ -5,11 +5,14 @@ struct SplitScreenContainer: View {
     @Environment(AppRouter.self) private var router
     @State private var splitRatio: CGFloat = 0.45
     @State private var isDragging = false
+    @State private var showRatioLabel = false
+    @State private var handlePulse = false
     @GestureState private var dragOffset: CGFloat = 0
 
     private let minRatio: CGFloat = 0.25
     private let maxRatio: CGFloat = 0.75
-    private let dividerHeight: CGFloat = 28
+    private let dividerHeight: CGFloat = 32
+    private let innerCornerRadius: CGFloat = 14
 
     var body: some View {
         GeometryReader { geo in
@@ -20,7 +23,12 @@ struct SplitScreenContainer: View {
                 // Top panel
                 topPanelView
                     .frame(height: dividerY - dividerHeight / 2)
-                    .clipped()
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            bottomLeadingRadius: innerCornerRadius,
+                            bottomTrailingRadius: innerCornerRadius
+                        )
+                    )
 
                 // Draggable divider
                 dividerView
@@ -28,25 +36,39 @@ struct SplitScreenContainer: View {
                     .gesture(
                         DragGesture(minimumDistance: 1)
                             .onChanged { value in
-                                isDragging = true
+                                if !isDragging {
+                                    isDragging = true
+                                    withAnimation(.easeIn(duration: 0.15)) {
+                                        showRatioLabel = true
+                                    }
+                                }
                                 let newRatio = (dividerY + value.translation.height) / totalHeight
                                 splitRatio = min(maxRatio, max(minRatio, newRatio))
                             }
                             .onEnded { _ in
                                 isDragging = false
                                 snapToNearestPreset()
+                                withAnimation(.easeOut(duration: 0.35).delay(0.4)) {
+                                    showRatioLabel = false
+                                }
                             }
                     )
                     .onTapGesture(count: 2) {
                         withAnimation(.spring(duration: 0.3)) {
                             splitRatio = 0.5
                         }
+                        Haptics.selection()
                     }
 
                 // Bottom panel
                 bottomPanelView
                     .frame(height: totalHeight - dividerY - dividerHeight / 2)
-                    .clipped()
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: innerCornerRadius,
+                            topTrailingRadius: innerCornerRadius
+                        )
+                    )
             }
         }
         .ignoresSafeArea(.keyboard)
@@ -54,6 +76,14 @@ struct SplitScreenContainer: View {
             backButton
         }
         .statusBarHidden(false)
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 1.6)
+                .repeatForever(autoreverses: true)
+            ) {
+                handlePulse = true
+            }
+        }
     }
 
     // MARK: - Panels
@@ -72,20 +102,44 @@ struct SplitScreenContainer: View {
 
     private var dividerView: some View {
         ZStack {
+            // Glass bar
             Rectangle()
                 .fill(.ultraThinMaterial)
+                .overlay(
+                    Rectangle()
+                        .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+                )
 
+            // Glowing capsule handle
             Capsule()
-                .fill(Color.white.opacity(isDragging ? 0.9 : 0.5))
-                .frame(width: 48, height: 5)
+                .fill(.white.opacity(isDragging ? 0.95 : 0.55))
+                .frame(width: isDragging ? 56 : 48, height: 5)
+                .shadow(
+                    color: .white.opacity(isDragging ? 0.5 : handlePulse ? 0.25 : 0.08),
+                    radius: isDragging ? 10 : 6
+                )
+                .animation(.spring(duration: 0.25), value: isDragging)
 
+            // Ratio label pill
             HStack {
                 Spacer()
                 Text(ratioText)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.trailing, 12)
-                    .opacity(isDragging ? 1 : 0)
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.white.opacity(0.12))
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                            )
+                    )
+                    .padding(.trailing, 14)
+                    .opacity(showRatioLabel ? 1 : 0)
+                    .scaleEffect(showRatioLabel ? 1 : 0.8, anchor: .trailing)
+                    .animation(.spring(duration: 0.25), value: showRatioLabel)
             }
         }
         .contentShape(Rectangle())
@@ -103,13 +157,28 @@ struct SplitScreenContainer: View {
         Button {
             router.goHome()
         } label: {
-            Image(systemName: "chevron.left.circle.fill")
-                .font(.title)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.white)
-                .padding(12)
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left")
+                    .font(.subheadline.weight(.semibold))
+
+                Text(mode.title)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.white.opacity(0.9))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                    )
+            )
+            .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+            .padding(12)
         }
-        .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
     }
 
     // MARK: - Snap
@@ -121,6 +190,7 @@ struct SplitScreenContainer: View {
             withAnimation(.spring(duration: 0.25)) {
                 splitRatio = closest
             }
+            Haptics.selection()
         }
     }
 }

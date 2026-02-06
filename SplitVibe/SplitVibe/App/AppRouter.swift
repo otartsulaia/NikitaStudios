@@ -6,13 +6,15 @@ final class AppRouter {
     var isShowingSettings = false
 
     func open(_ mode: SplitMode) {
-        withAnimation(.spring(duration: 0.4, bounce: 0.2)) {
+        Haptics.impact(.medium)
+        withAnimation(.spring(duration: 0.55, bounce: 0.2)) {
             selectedMode = mode
         }
     }
 
     func goHome() {
-        withAnimation(.spring(duration: 0.4, bounce: 0.2)) {
+        Haptics.tap()
+        withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
             selectedMode = nil
         }
     }
