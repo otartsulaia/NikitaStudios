@@ -1,6 +1,6 @@
 import SpriteKit
 
-final class RunnerScene: SKScene, SKPhysicsContactDelegate {
+final class RunnerScene: SKScene, @preconcurrency SKPhysicsContactDelegate {
     // MARK: - Categories
     private let playerCategory: UInt32 = 0x1
     private let obstacleCategory: UInt32 = 0x2

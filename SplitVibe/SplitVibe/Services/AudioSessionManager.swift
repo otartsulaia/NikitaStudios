@@ -1,5 +1,6 @@
 import AVFoundation
 
+@MainActor
 final class AudioSessionManager {
     static let shared = AudioSessionManager()
 

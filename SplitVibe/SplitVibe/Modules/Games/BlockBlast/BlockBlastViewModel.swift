@@ -1,6 +1,7 @@
 import SwiftUI
 import SpriteKit
 
+@MainActor
 @Observable
 final class BlockBlastViewModel {
     var score = 0
