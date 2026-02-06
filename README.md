@@ -1,3 +1,11 @@
-# Nikita Studios Projects
+# SplitVibe - Split Screen iOS App
 
-This repository contains small demos and tools. The **email_platform** folder holds a simple temporary mail interface using the [mail.tm](https://mail.tm) API. Open `index.html` in a browser to generate disposable email accounts, view their inbox and import/export account data.
+A multitasking iOS app that lets users enjoy two activities simultaneously with a split-screen interface.
+
+## Vision
+
+SplitVibe eliminates the need to switch between apps. Watch a YouTube video while playing a game, listen to SoundCloud while browsing — all in one screen.
+
+## Status
+
+**Phase:** Planning & Architecture
